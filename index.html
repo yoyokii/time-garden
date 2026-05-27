@@ -1304,7 +1304,11 @@ async function ghPull() {
     if (!resp.ok) return null;
     const data = await resp.json();
     ghDataSha = data.sha;
-    const content = JSON.parse(atob(data.content));
+    // Decode base64 with proper UTF-8 handling
+    const binaryStr = atob(data.content);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const content = JSON.parse(new TextDecoder().decode(bytes));
     return content;
   } catch (e) {
     console.warn('Pull failed:', e);
@@ -1312,9 +1316,33 @@ async function ghPull() {
   }
 }
 
+function updateSyncStatus(status) {
+  let el = document.getElementById('syncIndicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'syncIndicator';
+    el.style.cssText = 'position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A8578;background:rgba(247,243,237,0.9);padding:3px 10px;border-radius:10px;z-index:99;pointer-events:none;transition:opacity 0.3s;';
+    document.body.appendChild(el);
+  }
+  if (status === 'ok') {
+    el.textContent = '☁️ 已同步';
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0.4'; }, 2000);
+  } else if (status === 'err') {
+    el.textContent = '⚠️ 同步失败';
+    el.style.opacity = '1';
+  }
+}
+
 async function ghPush(syncData) {
   try {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(syncData))));
+    const jsonStr = JSON.stringify(syncData);
+    const encoded = new TextEncoder().encode(jsonStr);
+    let binary = '';
+    for (let i = 0; i < encoded.length; i++) {
+      binary += String.fromCharCode(encoded[i]);
+    }
+    const content = btoa(binary);
     const body = { message: 'sync: ' + new Date().toISOString(), content: content };
     if (ghDataSha) body.sha = ghDataSha;
     const resp = await fetch(GH_API, {
@@ -1325,9 +1353,12 @@ async function ghPush(syncData) {
     if (!resp.ok) { console.warn('Push failed:', resp.status); return false; }
     const result = await resp.json();
     ghDataSha = result.content.sha;
+    lastSyncTime = Date.now();
+    updateSyncStatus('ok');
     return true;
   } catch (e) {
     console.warn('Push error:', e);
+    updateSyncStatus('err');
     return false;
   }
 }
@@ -1470,8 +1501,8 @@ logActivity = function() {
 };
 
 // Init UI first, sync in background
-init();
-startAutoSync();
+try { init(); } catch(e) { console.error('Init error:', e); }
+try { startAutoSync(); } catch(e) { console.error('Sync error:', e); }
 </script>
 </body>
 </html>
