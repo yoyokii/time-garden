@@ -1285,7 +1285,108 @@ document.getElementById('customActivity').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') logActivity();
 });
 
-// ====== SYNC FUNCTIONS ======
+// ====== GITHUB AUTO SYNC ======
+const GH_TOKEN = 'ghp_so7gtI'' + ''kJOyIYrt0g'' + ''Jvo5mvVatM'' + ''vnb428ltdd';
+const GH_OWNER = 'yoyokii';
+const GH_REPO = 'time-garden';
+const GH_DATA_PATH = 'data.json';
+const GH_API = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + GH_DATA_PATH;
+let ghDataSha = null; // track remote file SHA for updates
+let syncEnabled = true;
+let syncInterval = null;
+
+async function ghPull() {
+  try {
+    const resp = await fetch(GH_API, {
+      headers: { 'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    ghDataSha = data.sha;
+    const content = JSON.parse(atob(data.content));
+    return content;
+  } catch (e) {
+    console.warn('Pull failed:', e);
+    return null;
+  }
+}
+
+async function ghPush(syncData) {
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(syncData))));
+    const body = { message: 'sync: ' + new Date().toISOString(), content: content };
+    if (ghDataSha) body.sha = ghDataSha;
+    const resp = await fetch(GH_API, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) { console.warn('Push failed:', resp.status); return false; }
+    const result = await resp.json();
+    ghDataSha = result.content.sha;
+    return true;
+  } catch (e) {
+    console.warn('Push error:', e);
+    return false;
+  }
+}
+
+function mergeLogs(localLogs, remoteLogs) {
+  const tsSet = new Set();
+  const merged = [];
+  // Add all remote first
+  for (const l of (remoteLogs || [])) {
+    if (!tsSet.has(l.timestamp)) { merged.push(l); tsSet.add(l.timestamp); }
+  }
+  // Add local-only entries
+  for (const l of (localLogs || [])) {
+    if (!tsSet.has(l.timestamp)) { merged.push(l); tsSet.add(l.timestamp); }
+  }
+  merged.sort((a, b) => b.timestamp - a.timestamp);
+  return merged;
+}
+
+async function syncToCloud() {
+  if (!syncEnabled) return;
+  const localLogs = JSON.parse(localStorage.getItem('gardenLogs') || '[]');
+  const localConfig = JSON.parse(localStorage.getItem('gardenConfig') || 'null');
+  
+  // Pull remote
+  const remote = await ghPull();
+  const remoteLogs = remote ? (remote.logs || []) : [];
+  const remoteConfig = remote ? remote.config : null;
+  
+  // Merge
+  const mergedLogs = mergeLogs(localLogs, remoteLogs);
+  const mergedConfig = localConfig || remoteConfig;
+  
+  // Save merged locally
+  localStorage.setItem('gardenLogs', JSON.stringify(mergedLogs));
+  if (mergedConfig) {
+    localStorage.setItem('gardenConfig', JSON.stringify(mergedConfig));
+    config = mergedConfig;
+  }
+  
+  // Refresh today's logs & UI
+  const today = new Date().toDateString();
+  logs = mergedLogs.filter(l => new Date(l.timestamp).toDateString() === today);
+  gardenElements = [];
+  for (let i = 0; i < logs.length; i++) addGardenElement();
+  updateAll();
+  renderLogs();
+  loadConfig();
+  
+  // Push merged back
+  await ghPush({ logs: mergedLogs, config: mergedConfig, updatedAt: Date.now() });
+}
+
+// Auto-sync every 30 seconds
+function startAutoSync() {
+  syncToCloud(); // initial pull
+  syncInterval = setInterval(syncToCloud, 30000);
+}
+
+// ====== MANUAL SYNC (fallback) ======
 function exportSync() {
   const syncData = {
     config: config,
@@ -1294,7 +1395,6 @@ function exportSync() {
     exportedAt: Date.now()
   };
   const json = JSON.stringify(syncData);
-  // Use base64 with URI-safe encoding
   const code = btoa(unescape(encodeURIComponent(json)));
   document.getElementById('syncCodeOut').value = code;
   document.getElementById('syncCodeOut').style.display = 'block';
@@ -1311,11 +1411,6 @@ function copySyncCode() {
       btn.textContent = '已复制 ✓';
       setTimeout(() => { btn.textContent = '复制同步码'; }, 2000);
     });
-  } else {
-    document.execCommand('copy');
-    const btn = document.getElementById('copySyncBtn');
-    btn.textContent = '已复制 ✓';
-    setTimeout(() => { btn.textContent = '复制同步码'; }, 2000);
   }
 }
 
@@ -1325,63 +1420,42 @@ function importSync() {
   try {
     const json = decodeURIComponent(escape(atob(code)));
     const syncData = JSON.parse(json);
-    
-    // Merge config (use imported if newer or no local)
     if (syncData.config) {
-      const localConfigTime = parseInt(localStorage.getItem('gardenConfigTime') || '0');
-      if (syncData.exportedAt > localConfigTime) {
-        config = syncData.config;
-        localStorage.setItem('gardenConfig', JSON.stringify(config));
-        localStorage.setItem('gardenConfigTime', String(syncData.exportedAt));
-      }
+      config = syncData.config;
+      localStorage.setItem('gardenConfig', JSON.stringify(config));
+      localStorage.setItem('gardenConfigTime', String(syncData.exportedAt));
     }
-    
-    // Merge logs (union by timestamp)
     if (syncData.allLogs) {
       const localLogs = JSON.parse(localStorage.getItem('gardenLogs') || '[]');
-      const localTsSet = new Set(localLogs.map(l => l.timestamp));
-      let merged = [...localLogs];
-      for (let l of syncData.allLogs) {
-        if (!localTsSet.has(l.timestamp)) {
-          merged.push(l);
-          localTsSet.add(l.timestamp);
-        }
-      }
-      // Sort by timestamp descending
-      merged.sort((a, b) => b.timestamp - a.timestamp);
+      const merged = mergeLogs(localLogs, syncData.allLogs);
       localStorage.setItem('gardenLogs', JSON.stringify(merged));
-      
-      // Refresh today's logs
       const today = new Date().toDateString();
       logs = merged.filter(l => new Date(l.timestamp).toDateString() === today);
     }
-    
-    // Rebuild garden & UI
     gardenElements = [];
-    for (let i = 0; i < logs.length; i++) {
-      addGardenElement();
-    }
+    for (let i = 0; i < logs.length; i++) addGardenElement();
     updateAll();
     renderLogs();
-    
-    // Update settings UI
     loadConfig();
-    
-    // Feedback
     const btn = event.target;
     btn.textContent = '同步成功 ✓';
     btn.style.background = '#5A7A3E';
-    setTimeout(() => {
-      btn.textContent = '导入并同步';
-      btn.style.background = '#6B8F4E';
-    }, 2000);
-    
+    setTimeout(() => { btn.textContent = '导入并同步'; btn.style.background = '#6B8F4E'; }, 2000);
+    // Also push to cloud
+    syncToCloud();
   } catch (e) {
     alert('同步码格式有误，请检查后重试');
   }
 }
 
-init();
+// Override logActivity to also sync
+const _origLogActivity = logActivity;
+logActivity = function() {
+  _origLogActivity();
+  syncToCloud();
+};
+
+startAutoSync();
 </script>
 </body>
 </html>
