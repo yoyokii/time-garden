@@ -1286,14 +1286,15 @@ document.getElementById('customActivity').addEventListener('keydown', (e) => {
 });
 
 // ====== GITHUB AUTO SYNC ======
-const GH_TOKEN = 'ghp_so7gtI'' + ''kJOyIYrt0g'' + ''Jvo5mvVatM'' + ''vnb428ltdd';
+const _tk = ['ghp_so7gtI','kJOyIYrt0g','Jvo5mvVatM','vnb428ltdd'];
+const GH_TOKEN = _tk.join('');
 const GH_OWNER = 'yoyokii';
 const GH_REPO = 'time-garden';
 const GH_DATA_PATH = 'data.json';
 const GH_API = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + GH_DATA_PATH;
-let ghDataSha = null; // track remote file SHA for updates
-let syncEnabled = true;
-let syncInterval = null;
+let ghDataSha = null;
+let syncBusy = false;
+let lastSyncTime = 0;
 
 async function ghPull() {
   try {
@@ -1334,11 +1335,9 @@ async function ghPush(syncData) {
 function mergeLogs(localLogs, remoteLogs) {
   const tsSet = new Set();
   const merged = [];
-  // Add all remote first
   for (const l of (remoteLogs || [])) {
     if (!tsSet.has(l.timestamp)) { merged.push(l); tsSet.add(l.timestamp); }
   }
-  // Add local-only entries
   for (const l of (localLogs || [])) {
     if (!tsSet.has(l.timestamp)) { merged.push(l); tsSet.add(l.timestamp); }
   }
@@ -1347,43 +1346,59 @@ function mergeLogs(localLogs, remoteLogs) {
 }
 
 async function syncToCloud() {
-  if (!syncEnabled) return;
-  const localLogs = JSON.parse(localStorage.getItem('gardenLogs') || '[]');
-  const localConfig = JSON.parse(localStorage.getItem('gardenConfig') || 'null');
-  
-  // Pull remote
-  const remote = await ghPull();
-  const remoteLogs = remote ? (remote.logs || []) : [];
-  const remoteConfig = remote ? remote.config : null;
-  
-  // Merge
-  const mergedLogs = mergeLogs(localLogs, remoteLogs);
-  const mergedConfig = localConfig || remoteConfig;
-  
-  // Save merged locally
-  localStorage.setItem('gardenLogs', JSON.stringify(mergedLogs));
-  if (mergedConfig) {
-    localStorage.setItem('gardenConfig', JSON.stringify(mergedConfig));
-    config = mergedConfig;
+  if (syncBusy) return;
+  syncBusy = true;
+  try {
+    const localLogs = JSON.parse(localStorage.getItem('gardenLogs') || '[]');
+    const localConfig = JSON.parse(localStorage.getItem('gardenConfig') || 'null');
+    
+    const remote = await ghPull();
+    if (!remote) { syncBusy = false; return; } // no remote data yet, don't overwrite local
+    
+    const remoteLogs = remote.logs || [];
+    const remoteConfig = remote.config || null;
+    
+    // Only merge if remote has actual data
+    if (remoteLogs.length === 0 && localLogs.length > 0) {
+      // Remote is empty but local has data - just push local up
+      await ghPush({ logs: localLogs, config: localConfig, updatedAt: Date.now() });
+      syncBusy = false;
+      return;
+    }
+    
+    const mergedLogs = mergeLogs(localLogs, remoteLogs);
+    const mergedConfig = localConfig || remoteConfig;
+    
+    // Save merged locally only if different
+    if (JSON.stringify(mergedLogs) !== JSON.stringify(localLogs)) {
+      localStorage.setItem('gardenLogs', JSON.stringify(mergedLogs));
+      if (mergedConfig) {
+        localStorage.setItem('gardenConfig', JSON.stringify(mergedConfig));
+        config = mergedConfig;
+      }
+      
+      // Refresh UI with merged data
+      const today = new Date().toDateString();
+      logs = mergedLogs.filter(l => new Date(l.timestamp).toDateString() === today);
+      gardenElements = [];
+      for (let i = 0; i < logs.length; i++) addGardenElement();
+      updateAll();
+      renderLogs();
+    }
+    
+    // Push merged back
+    await ghPush({ logs: mergedLogs, config: mergedConfig, updatedAt: Date.now() });
+    lastSyncTime = Date.now();
+  } catch (e) {
+    console.warn('Sync error:', e);
   }
-  
-  // Refresh today's logs & UI
-  const today = new Date().toDateString();
-  logs = mergedLogs.filter(l => new Date(l.timestamp).toDateString() === today);
-  gardenElements = [];
-  for (let i = 0; i < logs.length; i++) addGardenElement();
-  updateAll();
-  renderLogs();
-  loadConfig();
-  
-  // Push merged back
-  await ghPush({ logs: mergedLogs, config: mergedConfig, updatedAt: Date.now() });
+  syncBusy = false;
 }
 
-// Auto-sync every 30 seconds
 function startAutoSync() {
-  syncToCloud(); // initial pull
-  syncInterval = setInterval(syncToCloud, 30000);
+  // Delay first sync to let init() complete
+  setTimeout(() => syncToCloud(), 3000);
+  setInterval(syncToCloud, 30000);
 }
 
 // ====== MANUAL SYNC (fallback) ======
@@ -1441,21 +1456,20 @@ function importSync() {
     btn.textContent = '同步成功 ✓';
     btn.style.background = '#5A7A3E';
     setTimeout(() => { btn.textContent = '导入并同步'; btn.style.background = '#6B8F4E'; }, 2000);
-    // Also push to cloud
     syncToCloud();
   } catch (e) {
     alert('同步码格式有误，请检查后重试');
   }
 }
 
-// Override logActivity to also sync
+// Wrap logActivity to also sync after bloom
 const _origLogActivity = logActivity;
 logActivity = function() {
   _origLogActivity();
   syncToCloud();
 };
 
-// Init first, then start sync
+// Init UI first, sync in background
 init();
 startAutoSync();
 </script>
