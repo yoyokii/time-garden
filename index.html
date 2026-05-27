@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>我的时间花园</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --bg: #F7F3ED;
+    --bg-dark: #EDE8DF;
+    --text: #2C2C2C;
+    --text-light: #8A8578;
+    --accent: #6B8F4E;
+    --accent-light: #A8CC85;
+    --accent-glow: #D4E8B8;
+    --gold: #C9A84C;
+    --gold-light: #E8D48B;
+    --card: #FFFFFF;
+    --card-shadow: rgba(44,44,44,0.06);
+    --danger: #C46B5E;
+  }
+  
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    min-height: 100vh;
+  }
+  
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 40px 0 10px;
+  }
+  .header-sub {
+    font-size: 13px;
+    color: var(--text-light);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  
+  /* Time Balance Card */
+  .balance-card {
+    background: linear-gradient(135deg, #2C3E1D 0%, #3D5A27 50%, #4A6B2E 100%);
+    border-radius: 24px;
+    padding: 32px 28px;
+    margin: 24px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(74,107,46,0.25);
+  }
+  .balance-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(168,204,133,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .balance-label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .balance-time {
+    font-size: 56px;
+    font-weight: 900;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 20px rgba(168,204,133,0.3);
+    line-height: 1.1;
+  }
+  .balance-unit {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .balance-status {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .status-free {
+    background: rgba(168,204,133,0.25);
+    color: var(--accent-light);
+  }
+  .status-work {
+    background: rgba(201,168,76,0.25);
+    color: var(--gold-light);
+  }
+  .status-sleep {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+  }
+  
+  /* Stats Row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 18px 16px;
+    box-shadow: 0 2px 12px var(--card-shadow);
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-light);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text);
+  }
+  .stat-value .unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-light);
+    margin-left: 2px;
+  }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.gold { color: var(--gold); }
+  
+  /* Garden Canvas */
+  .garden-section {
+    margin: 24px 0;
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .garden-level {
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-glow);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+  .garden-container {
+    background: linear-gradient(180deg, #E8F0DF 0%, #D4E4C4 40%, #B8D4A0 100%);
+    border-radius: 20px;
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(107,143,78,0.15);
+  }
+  .garden-container canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .garden-empty {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: rgba(44,44,44,0.3);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  
+  /* Activity Input */
+  .activity-section {
+    margin: 24px 0;
+  }
+  .activity-input-wrap {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 16px var(--card-shadow);
+  }
+  .activity-prompt {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-bottom: 14px;
+  }
+  .activity-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .activity-tag {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    border: 1.5px solid #E0DCD4;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Noto Serif SC', serif;
+  }
+  .activity-tag:hover, .activity-tag.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+  .activity-tag.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .custom-input-row {
+    display: flex;
+    gap: 10px;
+  }
+  .custom-input {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 14px;
+    border: 1.5px solid #E0DCD4;
+    font-size: 14px;
+    font-family: 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .custom-input:focus {
+    border-color: var(--accent);
+  }
+  .custom-input::placeholder {
+    color: #C4BFB5;
+  }
+  .submit-btn {
+    padding: 10px 22px;
+    border-radius: 14px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Serif SC', serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .submit-btn:hover {
+    background: #5A7A3E;
+    transform: scale(1.02);
+  }
+  .submit-btn:disabled {
+    background: #C4C0B5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  /* Today's Log */
+  .log-section {
+    margin: 24px 0;
+  }
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 8px var(--card-shadow);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .log-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .log-icon.reading { background: #E8F0DF; }
+  .log-icon.exercise { background: #FFF3E0; }
+  .log-icon.family { background: #F3E5F5; }
+  .log-icon.creative { background: #E3F2FD; }
+  .log-icon.walk { background: #E0F2F1; }
+  .log-icon.rest { background: #FFF8E1; }
+  .log-icon.other { background: #F5F5F5; }
+  .log-info { flex: 1; }
+  .log-activity {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .log-time {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+  .log-duration {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  
+  /* Settings Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(44,44,44,0.4);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.show {
+    display: flex;
+  }
+  .modal {
+    background: var(--bg);
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 40px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: #D0CBC2;
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+  .setting-group {
+    margin-bottom: 20px;
+  }
+  .setting-label {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .setting-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid #E0DCD4;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    background: var(--card);
+    color: var(--text);
+    outline: none;
+  }
+  .setting-input:focus {
+    border-color: var(--accent);
+  }
+  .setting-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .modal-save {
+    width: 100%;
+    padding: 14px;
+    border-radius: 16px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Serif SC', serif;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  
+  /* Settings Trigger */
+  .settings-trigger {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--card);
+    border: none;
+    box-shadow: 0 2px 8px var(--card-shadow);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  /* Life Pie */
+  .life-pie-section {
+    margin: 24px 0;
+  }
+  .pie-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 12px var(--card-shadow);
+  }
+  .pie-canvas-wrap {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+  .pie-canvas-wrap canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .pie-legend {
+    flex: 1;
+    min-width: 0;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .legend-label { color: var(--text-light); }
+  .legend-value { font-weight: 700; color: var(--text); margin-left: auto; }
+
+  /* Floating garden particles */
+  .floating-leaf {
+    position: fixed;
+    pointer-events: none;
+    z-index: 200;
+    font-size: 20px;
+    animation: floatUp 2s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.5); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Settings Button -->
+  <button class="settings-trigger" onclick="openSettings()">⚙️</button>
+  
+  <!-- Header -->
+  <div class="header">
+    <div class="header-sub">TIME IS YOURS</div>
+    <div class="header-title">我的时间花园</div>
+  </div>
+  
+  <!-- Balance Card -->
+  <div class="balance-card">
+    <div class="balance-label">今日自由时间余额</div>
+    <div class="balance-time" id="balanceTime">--:--:--</div>
+    <div class="balance-unit" id="balanceHint"></div>
+    <div class="balance-status status-free" id="balanceStatus">属于自己</div>
+  </div>
+  
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">自由时薪</div>
+      <div class="stat-value accent">¥<span id="freeHourlyRate">--</span><span class="unit">/h</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">今日已绽放</div>
+      <div class="stat-value gold"><span id="bloomCount">0</span><span class="unit">次</span></div>
+    </div>
+  </div>
+  
+  <!-- Life Pie -->
+  <div class="life-pie-section">
+    <div class="section-header">
+      <div class="section-title">你的一天</div>
+    </div>
+    <div class="pie-container">
+      <div class="pie-canvas-wrap">
+        <canvas id="pieCanvas" width="240" height="240"></canvas>
+      </div>
+      <div class="pie-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#C9A84C"></div>
+          <span class="legend-label">工作</span>
+          <span class="legend-value" id="legendWork">9h</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#8A8578"></div>
+          <span class="legend-label">睡眠</span>
+          <span class="legend-value" id="legendSleep">7h</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#6B8F4E"></div>
+          <span class="legend-label">属于你</span>
+          <span class="legend-value" id="legendFree">8h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Garden -->
+  <div class="garden-section">
+    <div class="section-header">
+      <div class="section-title">我的花园</div>
+      <div class="garden-level" id="gardenLevel">🌱 荒地</div>
+    </div>
+    <div class="garden-container">
+      <canvas id="gardenCanvas"></canvas>
+      <div class="garden-empty" id="gardenEmpty">记录此刻，花园便会生长</div>
+    </div>
+  </div>
+  
+  <!-- Activity Input -->
+  <div class="activity-section">
+    <div class="activity-prompt">此刻你在做什么？</div>
+    <div class="activity-input-wrap">
+      <div class="activity-tags">
+        <button class="activity-tag" data-activity="阅读" data-icon="📖" data-cat="reading">📖 阅读</button>
+        <button class="activity-tag" data-activity="运动" data-icon="🏃" data-cat="exercise">🏃 运动</button>
+        <button class="activity-tag" data-activity="陪伴家人" data-icon="👨‍👩‍👧" data-cat="family">👨‍👩‍👧 陪伴</button>
+        <button class="activity-tag" data-activity="散步" data-icon="🌿" data-cat="walk">🌿 散步</button>
+        <button class="activity-tag" data-activity="创作" data-icon="✏️" data-cat="creative">✏️ 创作</button>
+        <button class="activity-tag" data-activity="放空" data-icon="☁️" data-cat="rest">☁️ 放空</button>
+      </div>
+      <div class="custom-input-row">
+        <input class="custom-input" id="customActivity" placeholder="或者写点什么..." maxlength="20">
+        <button class="submit-btn" id="submitBtn" onclick="logActivity()">绽放</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Today's Log -->
+  <div class="log-section">
+    <div class="section-header">
+      <div class="section-title">今日绽放</div>
+    </div>
+    <div class="log-list" id="logList"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ 设定</div>
+    <div class="setting-group">
+      <div class="setting-label">工作时间</div>
+      <div class="setting-row">
+        <input class="setting-input" id="setWorkStart" type="time" value="09:00">
+        <input class="setting-input" id="setWorkEnd" type="time" value="18:00">
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-label">睡眠时间</div>
+      <div class="setting-row">
+        <input class="setting-input" id="setSleepStart" type="time" value="23:00">
+        <input class="setting-input" id="setSleepEnd" type="time" value="06:00">
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-label">时薪（元）</div>
+      <input class="setting-input" id="setHourlyRate" type="number" value="123" placeholder="123">
+    </div>
+    <button class="modal-save" onclick="saveSettings()">保存</button>
+    
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #E0DCD4;">
+      <div class="modal-title" style="font-size:16px;margin-bottom:16px;">🔄 跨设备同步</div>
+      <div class="setting-group">
+        <div class="setting-label">导出同步码（复制到另一台设备导入）</div>
+        <button class="modal-save" style="background:#C9A84C;font-size:14px;" onclick="exportSync()">生成同步码</button>
+        <textarea id="syncCodeOut" class="setting-input" style="margin-top:10px;font-size:11px;height:70px;resize:none;font-family:monospace;display:none;" readonly></textarea>
+        <button id="copySyncBtn" class="modal-save" style="background:#8A8578;font-size:13px;margin-top:8px;display:none;" onclick="copySyncCode()">复制同步码</button>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">导入同步码（从另一台设备粘贴）</div>
+        <textarea id="syncCodeIn" class="setting-input" style="font-size:11px;height:70px;resize:none;font-family:monospace;" placeholder="粘贴同步码..."></textarea>
+        <button class="modal-save" style="background:#6B8F4E;font-size:14px;margin-top:10px;" onclick="importSync()">导入并同步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== CONFIG ======
+let config = {
+  workStart: 9 * 60,    // minutes from midnight
+  workEnd: 18 * 60,
+  sleepStart: 23 * 60,
+  sleepEnd: 6 * 60,
+  hourlyRate: 123
+};
+
+let logs = [];
+let gardenElements = [];
+let selectedTag = null;
+
+// Load from localStorage
+function loadConfig() {
+  const saved = localStorage.getItem('gardenConfig');
+  if (saved) {
+    config = JSON.parse(saved);
+  }
+  const savedLogs = localStorage.getItem('gardenLogs');
+  if (savedLogs) {
+    const parsed = JSON.parse(savedLogs);
+    const today = new Date().toDateString();
+    logs = parsed.filter(l => new Date(l.timestamp).toDateString() === today);
+  }
+  // Update settings UI
+  const ws = String(Math.floor(config.workStart / 60)).padStart(2, '0') + ':' + String(config.workStart % 60).padStart(2, '0');
+  const we = String(Math.floor(config.workEnd / 60)).padStart(2, '0') + ':' + String(config.workEnd % 60).padStart(2, '0');
+  const ss = String(Math.floor(config.sleepStart / 60)).padStart(2, '0') + ':' + String(config.sleepStart % 60).padStart(2, '0');
+  const se = String(Math.floor(config.sleepEnd / 60)).padStart(2, '0') + ':' + String(config.sleepEnd % 60).padStart(2, '0');
+  document.getElementById('setWorkStart').value = ws;
+  document.getElementById('setWorkEnd').value = we;
+  document.getElementById('setSleepStart').value = ss;
+  document.getElementById('setSleepEnd').value = se;
+  document.getElementById('setHourlyRate').value = config.hourlyRate;
+}
+
+function saveSettings() {
+  const ws = document.getElementById('setWorkStart').value.split(':');
+  const we = document.getElementById('setWorkEnd').value.split(':');
+  const ss = document.getElementById('setSleepStart').value.split(':');
+  const se = document.getElementById('setSleepEnd').value.split(':');
+  config.workStart = parseInt(ws[0]) * 60 + parseInt(ws[1]);
+  config.workEnd = parseInt(we[0]) * 60 + parseInt(we[1]);
+  config.sleepStart = parseInt(ss[0]) * 60 + parseInt(ss[1]);
+  config.sleepEnd = parseInt(se[0]) * 60 + parseInt(se[1]);
+  config.hourlyRate = parseInt(document.getElementById('setHourlyRate').value) || 123;
+  localStorage.setItem('gardenConfig', JSON.stringify(config));
+  closeSettings();
+  updateAll();
+}
+
+function openSettings() {
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+// ====== TIME CALCULATIONS ======
+function getNowMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+}
+
+function getFreeTimeToday() {
+  const now = getNowMinutes();
+  let totalFree = 0;
+  let remainingFree = 0;
+  
+  // Calculate total free time in a day
+  // Work duration
+  let workDuration = config.workEnd - config.workStart;
+  // Sleep duration (may cross midnight)
+  let sleepDuration;
+  if (config.sleepStart > config.sleepEnd) {
+    sleepDuration = (24 * 60 - config.sleepStart) + config.sleepEnd;
+  } else {
+    sleepDuration = config.sleepEnd - config.sleepStart;
+  }
+  totalFree = 24 * 60 - workDuration - sleepDuration;
+  
+  // Calculate remaining free time
+  // Check if current time is in work, sleep, or free period
+  // We need to iterate through the day from now to midnight, then from midnight to end of sleep
+  // Simpler: calculate free time remaining from now
+  
+  // Build a timeline of all periods for today and tomorrow morning
+  // Each period: { start, end, type }
+  let periods = [];
+  
+  // Today's periods
+  if (config.sleepEnd > 0) {
+    periods.push({ start: 0, end: config.sleepEnd, type: 'sleep' });
+  }
+  if (config.sleepEnd <= config.workStart) {
+    periods.push({ start: config.sleepEnd, end: config.workStart, type: 'free' });
+  }
+  periods.push({ start: config.workStart, end: config.workEnd, type: 'work' });
+  if (config.workEnd <= config.sleepStart || config.workEnd <= 24 * 60) {
+    const freeEnd = Math.min(config.sleepStart, 24 * 60);
+    if (config.workEnd < freeEnd) {
+      periods.push({ start: config.workEnd, end: freeEnd, type: 'free' });
+    }
+  }
+  if (config.sleepStart < 24 * 60) {
+    periods.push({ start: config.sleepStart, end: 24 * 60, type: 'sleep' });
+  }
+  
+  // Calculate remaining free time from now
+  for (let p of periods) {
+    if (p.end > now && p.type === 'free') {
+      remainingFree += Math.max(0, p.end - Math.max(p.start, now));
+    }
+  }
+  
+  return { totalFree, remainingFree };
+}
+
+function getCurrentStatus() {
+  const now = getNowMinutes();
+  // Sleep (crosses midnight)
+  if (config.sleepStart > config.sleepEnd) {
+    if (now >= config.sleepStart || now < config.sleepEnd) return 'sleep';
+  } else {
+    if (now >= config.sleepStart && now < config.sleepEnd) return 'sleep';
+  }
+  // Work
+  if (now >= config.workStart && now < config.workEnd) return 'work';
+  return 'free';
+}
+
+// ====== UPDATE DISPLAY ======
+function updateBalance() {
+  const { totalFree, remainingFree } = getFreeTimeToday();
+  const status = getCurrentStatus();
+  
+  const hours = Math.floor(remainingFree / 60);
+  const mins = Math.floor(remainingFree % 60);
+  const secs = Math.floor((remainingFree % 1) * 60);
+  
+  const timeStr = String(hours).padStart(2, '0') + ':' + 
+                  String(mins).padStart(2, '0') + ':' + 
+                  String(secs).padStart(2, '0');
+  
+  document.getElementById('balanceTime').textContent = timeStr;
+  
+  const statusEl = document.getElementById('balanceStatus');
+  const hintEl = document.getElementById('balanceHint');
+  
+  if (status === 'work') {
+    statusEl.textContent = '打工中';
+    statusEl.className = 'balance-status status-work';
+    const workRemain = config.workEnd - getNowMinutes();
+    const wh = Math.floor(workRemain / 60);
+    const wm = Math.floor(workRemain % 60);
+    hintEl.textContent = `距离自由还有 ${wh}h${wm}m`;
+  } else if (status === 'sleep') {
+    statusEl.textContent = '休息中';
+    statusEl.className = 'balance-status status-sleep';
+    hintEl.textContent = '明天花园等你';
+  } else {
+    statusEl.textContent = '属于自己';
+    statusEl.className = 'balance-status status-free';
+    hintEl.textContent = '这一刻，只为你';
+  }
+  
+  // Free hourly rate
+  const workHours = (config.workEnd - config.workStart) / 60;
+  const freeHours = totalFree / 60;
+  const freeRate = Math.round(config.hourlyRate * workHours / freeHours);
+  document.getElementById('freeHourlyRate').textContent = freeRate;
+  
+  // Bloom count
+  document.getElementById('bloomCount').textContent = logs.length;
+}
+
+function updatePie() {
+  const workHours = (config.workEnd - config.workStart) / 60;
+  let sleepHours;
+  if (config.sleepStart > config.sleepEnd) {
+    sleepHours = ((24 * 60 - config.sleepStart) + config.sleepEnd) / 60;
+  } else {
+    sleepHours = (config.sleepEnd - config.sleepStart) / 60;
+  }
+  const freeHours = 24 - workHours - sleepHours;
+  
+  document.getElementById('legendWork').textContent = workHours + 'h';
+  document.getElementById('legendSleep').textContent = sleepHours + 'h';
+  document.getElementById('legendFree').textContent = freeHours + 'h';
+  
+  // Draw pie
+  const canvas = document.getElementById('pieCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2, r = Math.min(W, H) / 2 - 10;
+  ctx.clearRect(0, 0, W, H);
+  
+  const total = 24;
+  const slices = [
+    { value: workHours, color: '#C9A84C' },
+    { value: sleepHours, color: '#C4BFB5' },
+    { value: freeHours, color: '#6B8F4E' }
+  ];
+  
+  let startAngle = -Math.PI / 2;
+  for (let s of slices) {
+    const sweep = (s.value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + sweep);
+    ctx.closePath();
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    startAngle += sweep;
+  }
+  
+  // Center circle (donut)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  
+  // Center text
+  ctx.fillStyle = '#6B8F4E';
+  ctx.font = '700 20px "Noto Serif SC", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(Math.round(freeHours / 24 * 100) + '%', cx, cy - 8);
+  ctx.fillStyle = '#8A8578';
+  ctx.font = '400 10px "Noto Serif SC", serif';
+  ctx.fillText('属于你', cx, cy + 12);
+}
+
+// ====== GARDEN RENDERING ======
+const gardenCanvas = document.getElementById('gardenCanvas');
+const gardenCtx = gardenCanvas.getContext('2d');
+let gardenAnimFrame;
+
+let grassBlades = []; // pre-generated grass data
+
+function resizeGarden() {
+  const container = gardenCanvas.parentElement;
+  gardenCanvas.width = container.clientWidth * 2;
+  gardenCanvas.height = container.clientHeight * 2;
+  gardenCanvas.style.width = container.clientWidth + 'px';
+  gardenCanvas.style.height = container.clientHeight + 'px';
+  gardenCtx.scale(2, 2);
+  // Regenerate static grass
+  const w = gardenCanvas.width / 2;
+  grassBlades = [];
+  for (let x = 0; x < w; x += 3) {
+    grassBlades.push({ x, h: 2 + Math.random() * 5 });
+  }
+}
+
+function drawGarden() {
+  const w = gardenCanvas.width / 2;
+  const h = gardenCanvas.height / 2;
+  gardenCtx.clearRect(0, 0, w, h);
+  
+  // Ground
+  const groundY = h - 40;
+  
+  // Grass
+  gardenCtx.fillStyle = '#8DB668';
+  gardenCtx.fillRect(0, groundY, w, 40);
+  gardenCtx.fillStyle = '#7DA858';
+  for (let blade of grassBlades) {
+    gardenCtx.fillRect(blade.x, groundY - blade.h, 2, blade.h);
+  }
+  
+  // Sky gradient (subtle)
+  const skyGrad = gardenCtx.createLinearGradient(0, 0, 0, groundY);
+  skyGrad.addColorStop(0, 'rgba(232,240,223,0.3)');
+  skyGrad.addColorStop(1, 'rgba(232,240,223,0)');
+  gardenCtx.fillStyle = skyGrad;
+  gardenCtx.fillRect(0, 0, w, groundY);
+  
+  // Draw elements
+  for (let el of gardenElements) {
+    drawGardenElement(el, groundY, w);
+  }
+  
+  // Empty state
+  document.getElementById('gardenEmpty').style.display = gardenElements.length === 0 ? 'block' : 'none';
+}
+
+function drawGardenElement(el, groundY, canvasW) {
+  const x = el.x * canvasW;
+  const baseY = groundY;
+  const size = el.size;
+  const age = (Date.now() - el.born) / 1000;
+  const growScale = Math.min(1, age / 0.8); // grow animation
+  const sway = Math.sin(Date.now() / 3000 + el.phase) * 1.5;
+  
+  gardenCtx.save();
+  gardenCtx.translate(x + sway, baseY);
+  gardenCtx.scale(growScale, growScale);
+  
+  switch(el.type) {
+    case 'flower':
+      drawFlower(gardenCtx, 0, 0, size, el.color);
+      break;
+    case 'tree':
+      drawTree(gardenCtx, 0, 0, size);
+      break;
+    case 'tulip':
+      drawTulip(gardenCtx, 0, 0, size, el.color);
+      break;
+    case 'bush':
+      drawBush(gardenCtx, 0, 0, size);
+      break;
+    case 'mushroom':
+      drawMushroom(gardenCtx, 0, 0, size, el.color);
+      break;
+  }
+  
+  gardenCtx.restore();
+}
+
+function drawFlower(ctx, x, y, size, color) {
+  // Stem
+  ctx.strokeStyle = '#5A8A3C';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - size * 20);
+  ctx.stroke();
+  
+  // Leaf
+  ctx.fillStyle = '#6B9F4A';
+  ctx.beginPath();
+  ctx.ellipse(x + 6, y - size * 10, 6, 3, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Petals
+  const petalCount = 5;
+  const petalR = size * 6;
+  const centerY = y - size * 20;
+  ctx.fillStyle = color;
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2 - Math.PI / 2;
+    const px = x + Math.cos(angle) * petalR * 0.6;
+    const py = centerY + Math.sin(angle) * petalR * 0.6;
+    ctx.beginPath();
+    ctx.ellipse(px, py, petalR * 0.5, petalR * 0.35, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Center
+  ctx.fillStyle = '#F5D76E';
+  ctx.beginPath();
+  ctx.arc(x, centerY, size * 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTree(ctx, x, y, size) {
+  // Trunk
+  ctx.fillStyle = '#8B6F47';
+  ctx.fillRect(x - size * 3, y - size * 25, size * 6, size * 25);
+  
+  // Canopy layers
+  ctx.fillStyle = '#4A7A2E';
+  ctx.beginPath();
+  ctx.arc(x, y - size * 32, size * 14, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#5A8F3C';
+  ctx.beginPath();
+  ctx.arc(x - size * 6, y - size * 28, size * 10, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#6B9F4A';
+  ctx.beginPath();
+  ctx.arc(x + size * 7, y - size * 30, size * 11, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTulip(ctx, x, y, size, color) {
+  // Stem
+  ctx.strokeStyle = '#5A8A3C';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x + 3, y - size * 12, x, y - size * 22);
+  ctx.stroke();
+  
+  // Leaves
+  ctx.fillStyle = '#6B9F4A';
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 8);
+  ctx.quadraticCurveTo(x + 12, y - size * 14, x + 4, y - size * 18);
+  ctx.quadraticCurveTo(x + 2, y - size * 12, x, y - size * 8);
+  ctx.fill();
+  
+  // Tulip head
+  const topY = y - size * 22;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x - size * 5, topY);
+  ctx.quadraticCurveTo(x - size * 6, topY - size * 10, x, topY - size * 12);
+  ctx.quadraticCurveTo(x + size * 6, topY - size * 10, x + size * 5, topY);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBush(ctx, x, y, size) {
+  ctx.fillStyle = '#4A7A2E';
+  ctx.beginPath();
+  ctx.arc(x - size * 5, y - size * 6, size * 8, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#5A8F3C';
+  ctx.beginPath();
+  ctx.arc(x + size * 4, y - size * 7, size * 9, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#6B9F4A';
+  ctx.beginPath();
+  ctx.arc(x, y - size * 10, size * 7, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Small berries
+  ctx.fillStyle = '#D4574A';
+  const berryPositions = [[-3, -10], [5, -8], [1, -14], [-6, -6], [7, -12]];
+  for (let [bx, by] of berryPositions) {
+    ctx.beginPath();
+    ctx.arc(x + bx * size, y + by * size, size * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawMushroom(ctx, x, y, size, color) {
+  // Stem
+  ctx.fillStyle = '#F5E6CC';
+  ctx.beginPath();
+  ctx.moveTo(x - size * 3, y);
+  ctx.lineTo(x - size * 2, y - size * 10);
+  ctx.lineTo(x + size * 2, y - size * 10);
+  ctx.lineTo(x + size * 3, y);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Cap
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, y - size * 10, size * 8, size * 6, 0, Math.PI, 0);
+  ctx.fill();
+  
+  // Dots
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath();
+  ctx.arc(x - size * 3, y - size * 13, size * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + size * 2, y - size * 14, size * 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y - size * 15, size * 1, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function updateGardenLevel() {
+  const count = gardenElements.length;
+  const el = document.getElementById('gardenLevel');
+  if (count === 0) el.textContent = '🌱 荒地';
+  else if (count < 3) el.textContent = '🌱 新芽';
+  else if (count < 6) el.textContent = '🌿 生机';
+  else if (count < 10) el.textContent = '🌸 繁花';
+  else if (count < 15) el.textContent = '🌳 茂盛';
+  else if (count < 20) el.textContent = '🏡 秘密花园';
+  else el.textContent = '🏰 仙境';
+}
+
+function addGardenElement() {
+  const types = ['flower', 'tulip', 'flower', 'bush', 'tulip', 'mushroom', 'flower'];
+  const colors = ['#E8829A', '#9B7ED8', '#F5A623', '#E55B3C', '#7EC8E3', '#FFB6C1', '#DDA0DD'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  
+  // Add tree every 5th element
+  const finalType = gardenElements.length > 0 && gardenElements.length % 5 === 0 ? 'tree' : type;
+  
+  gardenElements.push({
+    type: finalType,
+    x: 0.1 + Math.random() * 0.8,
+    size: 0.8 + Math.random() * 0.5,
+    color: color,
+    phase: Math.random() * Math.PI * 2,
+    born: Date.now()
+  });
+  
+  updateGardenLevel();
+}
+
+// ====== ACTIVITY LOGGING ======
+document.querySelectorAll('.activity-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    if (tag.classList.contains('active')) {
+      tag.classList.remove('active');
+      selectedTag = null;
+    } else {
+      document.querySelectorAll('.activity-tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+      selectedTag = {
+        activity: tag.dataset.activity,
+        icon: tag.dataset.icon,
+        cat: tag.dataset.cat
+      };
+      // Auto-fill and submit
+      document.getElementById('customActivity').value = tag.dataset.activity;
+    }
+  });
+});
+
+function logActivity() {
+  let activity = document.getElementById('customActivity').value.trim();
+  if (!activity) return;
+  
+  let icon = '✨';
+  let cat = 'other';
+  
+  if (selectedTag && selectedTag.activity === activity) {
+    icon = selectedTag.icon;
+    cat = selectedTag.cat;
+  }
+  
+  const now = new Date();
+  const entry = {
+    activity,
+    icon,
+    cat,
+    timestamp: now.getTime(),
+    time: now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  };
+  
+  logs.unshift(entry);
+  localStorage.setItem('gardenLogs', JSON.stringify(logs));
+  
+  // Add to garden
+  addGardenElement();
+  
+  // Floating animation
+  spawnFloatingLeaf(icon);
+  
+  // Render log
+  renderLogs();
+  
+  // Clear input
+  document.getElementById('customActivity').value = '';
+  document.querySelectorAll('.activity-tag').forEach(t => t.classList.remove('active'));
+  selectedTag = null;
+  
+  // Update bloom count
+  document.getElementById('bloomCount').textContent = logs.length;
+}
+
+function spawnFloatingLeaf(icon) {
+  const leaf = document.createElement('div');
+  leaf.className = 'floating-leaf';
+  leaf.textContent = icon;
+  leaf.style.left = (Math.random() * 60 + 20) + '%';
+  leaf.style.top = '50%';
+  document.body.appendChild(leaf);
+  setTimeout(() => leaf.remove(), 2000);
+}
+
+function renderLogs() {
+  const list = document.getElementById('logList');
+  list.innerHTML = '';
+  
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i];
+    const duration = i < logs.length - 1 
+      ? Math.round((logs[i + 1].timestamp - log.timestamp) / 60000)
+      : Math.round((Date.now() - log.timestamp) / 60000);
+    
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    item.innerHTML = `
+      <div class="log-icon ${log.cat}">${log.icon}</div>
+      <div class="log-info">
+        <div class="log-activity">${log.activity}</div>
+        <div class="log-time">${log.time}</div>
+      </div>
+      <div class="log-duration">${duration > 0 ? duration + 'min' : '刚刚'}</div>
+    `;
+    list.appendChild(item);
+  }
+  
+  if (logs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:#C4BFB5;padding:20px;font-size:13px;">还没有记录，开始你的第一刻吧</div>';
+  }
+}
+
+// ====== ANIMATION LOOP ======
+function animate() {
+  drawGarden();
+  gardenAnimFrame = requestAnimationFrame(animate);
+}
+
+function updateAll() {
+  updateBalance();
+  updatePie();
+  updateGardenLevel();
+}
+
+// ====== INIT ======
+function init() {
+  loadConfig();
+  resizeGarden();
+  
+  // Rebuild garden from today's logs
+  gardenElements = [];
+  for (let i = 0; i < logs.length; i++) {
+    addGardenElement();
+  }
+  
+  updateAll();
+  renderLogs();
+  animate();
+  
+  // Update time every second
+  setInterval(updateBalance, 1000);
+  
+  // Re-render logs every minute for duration update
+  setInterval(renderLogs, 60000);
+}
+
+window.addEventListener('resize', () => {
+  resizeGarden();
+  drawGarden();
+});
+
+// Enter key to submit
+document.getElementById('customActivity').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') logActivity();
+});
+
+// ====== SYNC FUNCTIONS ======
+function exportSync() {
+  const syncData = {
+    config: config,
+    logs: logs,
+    allLogs: JSON.parse(localStorage.getItem('gardenLogs') || '[]'),
+    exportedAt: Date.now()
+  };
+  const json = JSON.stringify(syncData);
+  // Use base64 with URI-safe encoding
+  const code = btoa(unescape(encodeURIComponent(json)));
+  document.getElementById('syncCodeOut').value = code;
+  document.getElementById('syncCodeOut').style.display = 'block';
+  document.getElementById('copySyncBtn').style.display = 'block';
+}
+
+function copySyncCode() {
+  const textarea = document.getElementById('syncCodeOut');
+  textarea.select();
+  textarea.setSelectionRange(0, 99999);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      const btn = document.getElementById('copySyncBtn');
+      btn.textContent = '已复制 ✓';
+      setTimeout(() => { btn.textContent = '复制同步码'; }, 2000);
+    });
+  } else {
+    document.execCommand('copy');
+    const btn = document.getElementById('copySyncBtn');
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => { btn.textContent = '复制同步码'; }, 2000);
+  }
+}
+
+function importSync() {
+  const code = document.getElementById('syncCodeIn').value.trim();
+  if (!code) return;
+  try {
+    const json = decodeURIComponent(escape(atob(code)));
+    const syncData = JSON.parse(json);
+    
+    // Merge config (use imported if newer or no local)
+    if (syncData.config) {
+      const localConfigTime = parseInt(localStorage.getItem('gardenConfigTime') || '0');
+      if (syncData.exportedAt > localConfigTime) {
+        config = syncData.config;
+        localStorage.setItem('gardenConfig', JSON.stringify(config));
+        localStorage.setItem('gardenConfigTime', String(syncData.exportedAt));
+      }
+    }
+    
+    // Merge logs (union by timestamp)
+    if (syncData.allLogs) {
+      const localLogs = JSON.parse(localStorage.getItem('gardenLogs') || '[]');
+      const localTsSet = new Set(localLogs.map(l => l.timestamp));
+      let merged = [...localLogs];
+      for (let l of syncData.allLogs) {
+        if (!localTsSet.has(l.timestamp)) {
+          merged.push(l);
+          localTsSet.add(l.timestamp);
+        }
+      }
+      // Sort by timestamp descending
+      merged.sort((a, b) => b.timestamp - a.timestamp);
+      localStorage.setItem('gardenLogs', JSON.stringify(merged));
+      
+      // Refresh today's logs
+      const today = new Date().toDateString();
+      logs = merged.filter(l => new Date(l.timestamp).toDateString() === today);
+    }
+    
+    // Rebuild garden & UI
+    gardenElements = [];
+    for (let i = 0; i < logs.length; i++) {
+      addGardenElement();
+    }
+    updateAll();
+    renderLogs();
+    
+    // Update settings UI
+    loadConfig();
+    
+    // Feedback
+    const btn = event.target;
+    btn.textContent = '同步成功 ✓';
+    btn.style.background = '#5A7A3E';
+    setTimeout(() => {
+      btn.textContent = '导入并同步';
+      btn.style.background = '#6B8F4E';
+    }, 2000);
+    
+  } catch (e) {
+    alert('同步码格式有误，请检查后重试');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
